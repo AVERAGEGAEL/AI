@@ -14,6 +14,8 @@ const clearBtn = document.getElementById("clearBtn");
 let controller = null;
 let chatHistory = [];
 
+const allowedGeminiModels = ["gemini-2.5-pro","gemini-2.5-flash","gemini-2.5-flash-lite"];
+
 tempEl.addEventListener("input", () => {
   tempValEl.textContent = Number(tempEl.value).toFixed(2);
 });
@@ -45,9 +47,15 @@ document.getElementById("chatForm").addEventListener("submit", async (e) => {
   const assistantNode = pushMessage("assistant", "");
   assistantNode.dataset.streaming = "1";
 
+  // Validate Gemini model
+  let selectedModel = modelEl.value;
+  if (providerEl.value === "gemini" && !allowedGeminiModels.includes(selectedModel)) {
+    selectedModel = "gemini-2.5-flash"; // default fallback
+  }
+
   const payload = {
     provider: providerEl.value,
-    model: modelEl.value,
+    model: selectedModel,
     temperature: parseFloat(tempEl.value),
     system: systemEl.value || "You are StudyZone AI. Explain simply.",
     messages: [...chatHistory, { role: "user", content: text }],
