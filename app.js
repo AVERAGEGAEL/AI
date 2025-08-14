@@ -14,6 +14,7 @@ const clearBtn = document.getElementById("clearBtn");
 let controller = null;
 let chatHistory = [];
 
+const openAIModels = ["gpt-4o-mini","gpt-4.1-mini","gpt-4o"];
 const allowedGeminiModels = ["gemini-2.5-pro","gemini-2.5-flash","gemini-2.5-flash-lite"];
 
 tempEl.addEventListener("input", () => {
@@ -34,6 +35,16 @@ inputEl.addEventListener("keydown", (e) => {
 clearBtn.addEventListener("click", () => {
   chatHistory = [];
   messagesEl.innerHTML = "";
+});
+
+// AUTO SET PROVIDER BASED ON MODEL
+modelEl.addEventListener("change", () => {
+  const val = modelEl.value;
+  if (allowedGeminiModels.includes(val)) {
+    providerEl.value = "gemini";
+  } else if (openAIModels.includes(val)) {
+    providerEl.value = "openai";
+  }
 });
 
 document.getElementById("chatForm").addEventListener("submit", async (e) => {
