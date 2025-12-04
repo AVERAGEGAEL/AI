@@ -4,7 +4,7 @@ const messagesEl = document.getElementById("messages");
 const inputEl = document.getElementById("userInput");
 const systemEl = document.getElementById("system");
 const modelEl = document.getElementById("model");
-const providerEl = document.getElementById("provider");
+// Provider element removed from HTML, so we don't select it here
 const tempEl = document.getElementById("temp");
 const tempValEl = document.getElementById("tempVal");
 const sendBtn = document.getElementById("sendBtn");
@@ -14,7 +14,6 @@ const clearBtn = document.getElementById("clearBtn");
 let controller = null;
 let chatHistory = [];
 
-const openAIModels = ["gpt-4o-mini","gpt-4.1-mini","gpt-4o"];
 const allowedGeminiModels = ["gemini-2.5-pro","gemini-2.5-flash","gemini-2.5-flash-lite"];
 
 tempEl.addEventListener("input", () => {
@@ -37,16 +36,6 @@ clearBtn.addEventListener("click", () => {
   messagesEl.innerHTML = "";
 });
 
-// AUTO SET PROVIDER BASED ON MODEL
-modelEl.addEventListener("change", () => {
-  const val = modelEl.value;
-  if (allowedGeminiModels.includes(val)) {
-    providerEl.value = "gemini";
-  } else if (openAIModels.includes(val)) {
-    providerEl.value = "openai";
-  }
-});
-
 document.getElementById("chatForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   const text = inputEl.value.trim();
@@ -55,20 +44,21 @@ document.getElementById("chatForm").addEventListener("submit", async (e) => {
   pushMessage("user", text);
   inputEl.value = "";
 
-  const assistantNode = pushMessage("assistant", "");
+  const assistantNode = pushMessage("assistant", "Thinking...");
   assistantNode.dataset.streaming = "1";
 
   // Validate Gemini model
   let selectedModel = modelEl.value;
-  if (providerEl.value === "gemini" && !allowedGeminiModels.includes(selectedModel)) {
+  if (!allowedGeminiModels.includes(selectedModel)) {
     selectedModel = "gemini-2.5-flash"; // default fallback
   }
 
+  // Hardcoded to gemini since OpenAI is removed
   const payload = {
-    provider: providerEl.value,
+    provider: "gemini", 
     model: selectedModel,
     temperature: parseFloat(tempEl.value),
-    system: systemEl.value || "You are StudyZone AI. Explain simply.",
+    system: systemEl.value || "You are a helpful AI assistant. Explain simply.",
     messages: [...chatHistory, { role: "user", content: text }],
   };
 
@@ -89,44 +79,14 @@ document.getElementById("chatForm").addEventListener("submit", async (e) => {
       return;
     }
 
-    if (providerEl.value === "openai") {
-      // stream SSE
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder("utf-8");
-      let fullText = "";
-
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        const chunk = decoder.decode(value, { stream: true });
-
-        for (const line of chunk.split("\n")) {
-          if (!line.startsWith("data:")) continue;
-          const data = line.slice(5).trim();
-          if (data === "[DONE]") break;
-          try {
-            const obj = JSON.parse(data);
-            const delta = obj?.choices?.[0]?.delta?.content ?? "";
-            if (delta) {
-              fullText += delta;
-              assistantNode.textContent = fullText;
-              messagesEl.scrollTop = messagesEl.scrollHeight;
-            }
-          } catch {}
-        }
-      }
-      chatHistory.push({ role: "user", content: text });
-      chatHistory.push({ role: "assistant", content: assistantNode.textContent });
-
-    } else {
-      // Gemini normal JSON
-      const data = await res.json();
-      assistantNode.textContent = data.text;
-      chatHistory.push({ role: "user", content: text });
-      chatHistory.push({ role: "assistant", content: data.text });
-    }
+    // Gemini handling (Normal JSON)
+    const data = await res.json();
+    assistantNode.textContent = data.text;
+    chatHistory.push({ role: "user", content: text });
+    chatHistory.push({ role: "assistant", content: data.text });
+    
   } catch (err) {
-    if (err.name !== "AbortError") assistantNode.textContent = "Stream error.";
+    if (err.name !== "AbortError") assistantNode.textContent = "Request error.";
   } finally {
     toggleBusy(false);
     controller = null;
